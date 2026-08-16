@@ -4,7 +4,9 @@
  * ps5-autoloader — version & config
  * ----------------------------------------------------------------------- */
 
-#define AUTOLOADER_VERSION "0.1.4"
+/* Fork of itsPLK/ps5-unified-autoloader. The "x" suffix marks the variant that
+ * embeds Payload Manager X (bsk193/ps5-payload-manager-x) as the fallback. */
+#define AUTOLOADER_VERSION "0.1.4x"
 
 /* Port that elfldr (socksrv) listens on for incoming ELF payloads */
 #define ELFLDR_PORT 9021

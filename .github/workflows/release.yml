@@ -37,14 +37,14 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           SHA="${{ steps.vars.outputs.sha_short }}"
-          mv autoloader_v*.elf ps5-unified-autoloader-v${VERSION}-${SHA}.elf
+          mv autoloader_v*.elf ps5-unified-autoloader-x-v${VERSION}-${SHA}.elf
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.get_version.outputs.version }}-${{ steps.vars.outputs.sha_short }}
           name: Release v${{ steps.get_version.outputs.version }}-${{ steps.vars.outputs.sha_short }}
-          files: ps5-unified-autoloader-v${{ steps.get_version.outputs.version }}-${{ steps.vars.outputs.sha_short }}.elf
+          files: ps5-unified-autoloader-x-v${{ steps.get_version.outputs.version }}-${{ steps.vars.outputs.sha_short }}.elf
           draft: false
           prerelease: false
         env:

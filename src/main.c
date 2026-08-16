@@ -9,6 +9,10 @@
  *   5. Scan USB0-7, then /data for autoload.txt
  *   6a. If found: iterate lines, launch each .elf from the config directory
  *   6b. If not found: send embedded pldmgr.elf to elfldr (fallback)
+ *
+ * Fork note: the embedded fallback is Payload Manager X
+ * (bsk193/ps5-payload-manager-x). It is staged to the filename pldmgr.elf at
+ * build time so the xxd-generated symbols below keep their names.
  */
 
 #include "autoloader.h"
@@ -236,12 +240,12 @@ int main(void) {
         autoloader_notify("Found autoload config:\n%s", config_path);
         run_autoload_sequence(config_path);
     } else {
-        /* Step 6b: no config — fall back to embedded pldmgr */
-        printf("[autoloader] No autoload config found. Starting Payload Manager...\n");
+        /* Step 6b: no config — fall back to embedded Payload Manager X */
+        printf("[autoloader] No autoload config found. Starting Payload Manager X...\n");
         fflush(stdout);
         if (launch_elf_from_memory(pldmgr_elf, pldmgr_elf_len) != 0) {
-            autoloader_notify("ERROR: failed to launch Payload Manager");
-            printf("[autoloader] ERROR: failed to launch pldmgr\n");
+            autoloader_notify("ERROR: failed to launch Payload Manager X");
+            printf("[autoloader] ERROR: failed to launch pldmgrx\n");
             fflush(stdout);
             return -1;
         }

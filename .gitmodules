@@ -1,3 +1,3 @@
-[submodule "third_party/ps5-payload-manager"]
-	path = third_party/ps5-payload-manager
-	url = https://github.com/itsPLK/ps5-payload-manager.git
+[submodule "third_party/ps5-payload-manager-x"]
+	path = third_party/ps5-payload-manager-x
+	url = https://github.com/bsk193/ps5-payload-manager-x.git

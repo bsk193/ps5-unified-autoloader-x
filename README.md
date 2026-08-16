@@ -1,6 +1,15 @@
-# ps5-unified-autoloader
+# ps5-unified-autoloader-x
 
 A standalone PS5 ELF payload that automates loading payloads. This is intended for integration into jailbreak chains rather than direct end-user usage.
+
+> [!NOTE]
+> This is a fork of **[itsPLK/ps5-unified-autoloader](https://github.com/itsPLK/ps5-unified-autoloader)**.
+> The **only** functional change is the embedded fallback manager: this build bundles
+> **[Payload Manager X](https://github.com/bsk193/ps5-payload-manager-x)** (`pldmgrx`, HTTP port **8084**)
+> instead of the official [Payload Manager](https://github.com/itsPLK/ps5-payload-manager).
+> Everything else — browser handling, app killing, `autoload.txt`, `@sync` — is upstream behaviour.
+>
+> Paired with **[ps5-webkit-autoloader-x](https://github.com/bsk193/ps5-webkit-autoloader-x)**.
 
 ## What it does
 
@@ -15,7 +24,7 @@ When loaded via elfldr (e.g. as part of your jailbreak chain), `autoloader.elf`:
    - **Generic directories on USB** (`/mnt/usb[0-7]/ps5_autoloader/autoload.txt`)
    - **Generic directory in `/data`** (`/data/ps5_autoloader/autoload.txt`)
 5. **If found**: launches each payload listed in the config via elfldr
-6. **If not found**: automatically starts the bundled **Payload Manager**
+6. **If not found**: automatically starts the bundled **Payload Manager X**
 
 ## autoload.txt format
 
@@ -42,38 +51,63 @@ third_payload.elf
 
 ### Requirements
 - Docker
+- Node.js 20+ (only needed for `-b` builds — Payload Manager X's React frontend)
 - git (with submodules, only needed for `-b` builds)
 
 ### Clone
 ```bash
-git clone https://github.com/itsPLK/ps5-unified-autoloader.git
-cd ps5-unified-autoloader
+git clone https://github.com/bsk193/ps5-unified-autoloader-x.git
+cd ps5-unified-autoloader-x
 ```
 
-### Build (download pre-built pldmgr — recommended)
+### Build (download pre-built Payload Manager X — recommended)
 ```bash
 ./build_release.sh
 # or explicitly:
 ./build_release.sh -d
 ```
 
-### Build (compile pldmgr from source)
+Pulls the latest `pldmgrx_v*.elf` from
+[bsk193/ps5-payload-manager-x](https://github.com/bsk193/ps5-payload-manager-x/releases)
+and embeds it.
+
+### Build (compile Payload Manager X from source)
 ```bash
 git submodule update --init --recursive
 ./build_release.sh -b
 ```
 
-This uses pldmgr's own Docker image (which includes libmicrohttpd, mbedTLS, libcurl)
-to build pldmgr, then uses a separate lean SDK image to build the autoloader.
+This builds Payload Manager X's React frontend on the host, then compiles it with
+`make PLDMGRX=1 PLDMGRX_PORT=8084` inside its own Docker image (which includes
+libmicrohttpd, mbedTLS, libcurl), and finally uses a separate lean SDK image to
+build the autoloader.
+
+Set `PLDMGRX_PORT` to pick the manager's HTTP port:
+
+| Port | Behaviour |
+|---|---|
+| `8084` (default) | Drop-in replacement for the official Payload Manager |
+| `8184` | Runs alongside the official Payload Manager |
+
+```bash
+PLDMGRX_PORT=8184 ./build_release.sh -b
+```
+
+> The `-d` (download) path always yields the **8084** build, since that is what
+> Payload Manager X publishes. Use `-b` if you need 8184.
 
 ### Output
 ```
-autoloader_v0.1.0_abc1234.elf
+autoloader_v0.1.4x_abc1234.elf
 ```
 
 ## Structure
 
 ```
 autoloader.elf          ← load this via elfldr
-  └─ pldmgr.elf         ← embedded fallback (launched if no autoload.txt found)
+  └─ pldmgr.elf         ← embedded fallback: Payload Manager X (launched if no autoload.txt found)
 ```
+
+> The embedded ELF is staged under the filename `pldmgr.elf` on purpose: the
+> Makefile runs `xxd -i` on it, so the generated symbols (`pldmgr_elf`,
+> `pldmgr_elf_len`) referenced by `src/main.c` stay unchanged from upstream.
