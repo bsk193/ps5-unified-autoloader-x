@@ -8,9 +8,9 @@
  *   4. Wait for elfldr to be ready on port 9021
  *   5. Scan USB0-7, then /data for autoload.txt
  *   6a. If found: iterate lines, launch each .elf from the config directory
- *   6b. If not found: send embedded pldmgr.elf to elfldr (fallback)
+ *   6b. Always send the embedded Payload Manager X to elfldr (see below)
  *
- * Fork note: the embedded fallback is Payload Manager X
+ * Fork note: the embedded manager is Payload Manager X
  * (bsk193/ps5-payload-manager-x). It is staged to the filename pldmgr.elf at
  * build time so the xxd-generated symbols below keep their names.
  */
@@ -239,17 +239,35 @@ int main(void) {
         /* Step 6a: run the autoload sequence from config */
         autoloader_notify("Found autoload config:\n%s", config_path);
         run_autoload_sequence(config_path);
+
+        /* Give elfldr a moment to finish with the last autoload payload before
+         * we hand it another one. */
+        usleep(PLDMGRX_LAUNCH_DELAY_US);
     } else {
-        /* Step 6b: no config — fall back to embedded Payload Manager X */
-        printf("[autoloader] No autoload config found. Starting Payload Manager X...\n");
+        printf("[autoloader] No autoload config found.\n");
         fflush(stdout);
-        if (launch_elf_from_memory(pldmgr_elf, pldmgr_elf_len) != 0) {
-            autoloader_notify("ERROR: failed to launch Payload Manager X");
-            printf("[autoloader] ERROR: failed to launch pldmgrx\n");
-            fflush(stdout);
-            return -1;
-        }
     }
+
+    /* Step 6b: always start Payload Manager X.
+     *
+     * Fork behaviour change: upstream launches the embedded manager ONLY when no
+     * autoload.txt is found, so any leftover config silently suppresses it. This
+     * fork always starts it — the manager is the point of the build — and treats
+     * autoload.txt as an additional payload chain rather than an alternative. */
+    printf("[autoloader] Starting Payload Manager X (port 8084)...\n");
+    fflush(stdout);
+    autoloader_notify("Starting Payload Manager X...");
+
+    if (launch_elf_from_memory(pldmgr_elf, pldmgr_elf_len) != 0) {
+        autoloader_notify("ERROR: failed to launch Payload Manager X");
+        printf("[autoloader] ERROR: failed to launch pldmgrx\n");
+        fflush(stdout);
+        return -1;
+    }
+
+    autoloader_notify("Payload Manager X started.\nBrowse to port 8084.");
+    printf("[autoloader] Payload Manager X launched.\n");
+    fflush(stdout);
 
     return 0;
 }

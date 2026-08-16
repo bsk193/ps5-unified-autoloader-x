@@ -5,8 +5,12 @@
  * ----------------------------------------------------------------------- */
 
 /* Fork of itsPLK/ps5-unified-autoloader. The "x" suffix marks the variant that
- * embeds Payload Manager X (bsk193/ps5-payload-manager-x) as the fallback. */
-#define AUTOLOADER_VERSION "0.1.4x"
+ * embeds Payload Manager X (bsk193/ps5-payload-manager-x) and always starts it. */
+#define AUTOLOADER_VERSION "0.1.5x"
+
+/* Pause after an autoload.txt sequence, before handing elfldr the embedded
+ * Payload Manager X, so the last autoload payload has settled first. */
+#define PLDMGRX_LAUNCH_DELAY_US 2000000   /* 2 s */
 
 /* Port that elfldr (socksrv) listens on for incoming ELF payloads */
 #define ELFLDR_PORT 9021

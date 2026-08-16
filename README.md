@@ -3,11 +3,19 @@
 A standalone PS5 ELF payload that automates loading payloads. This is intended for integration into jailbreak chains rather than direct end-user usage.
 
 > [!NOTE]
-> This is a fork of **[itsPLK/ps5-unified-autoloader](https://github.com/itsPLK/ps5-unified-autoloader)**.
-> The **only** functional change is the embedded fallback manager: this build bundles
-> **[Payload Manager X](https://github.com/bsk193/ps5-payload-manager-x)** (`pldmgrx`, HTTP port **8084**)
-> instead of the official [Payload Manager](https://github.com/itsPLK/ps5-payload-manager).
-> Everything else — browser handling, app killing, `autoload.txt`, `@sync` — is upstream behaviour.
+> This is a fork of **[itsPLK/ps5-unified-autoloader](https://github.com/itsPLK/ps5-unified-autoloader)**
+> with two changes:
+>
+> 1. It bundles **[Payload Manager X](https://github.com/bsk193/ps5-payload-manager-x)**
+>    (`pldmgrx`, HTTP port **8084**) instead of the official
+>    [Payload Manager](https://github.com/itsPLK/ps5-payload-manager).
+> 2. It **always** starts the manager. Upstream starts it only when no `autoload.txt`
+>    is found, so a leftover config silently suppresses it. Here `autoload.txt` is an
+>    *additional* payload chain, not an alternative — its payloads run first, then the
+>    manager starts.
+>
+> Everything else — browser handling, app killing, `autoload.txt` parsing, `@sync` — is
+> upstream behaviour.
 >
 > Paired with **[ps5-webkit-autoloader-x](https://github.com/bsk193/ps5-webkit-autoloader-x)**.
 
@@ -24,7 +32,7 @@ When loaded via elfldr (e.g. as part of your jailbreak chain), `autoloader.elf`:
    - **Generic directories on USB** (`/mnt/usb[0-7]/ps5_autoloader/autoload.txt`)
    - **Generic directory in `/data`** (`/data/ps5_autoloader/autoload.txt`)
 5. **If found**: launches each payload listed in the config via elfldr
-6. **If not found**: automatically starts the bundled **Payload Manager X**
+6. **Always**: starts the bundled **Payload Manager X** (after a 2 s pause if a config ran)
 
 ## autoload.txt format
 
@@ -105,7 +113,7 @@ autoloader_v0.1.4x_abc1234.elf
 
 ```
 autoloader.elf          ← load this via elfldr
-  └─ pldmgr.elf         ← embedded fallback: Payload Manager X (launched if no autoload.txt found)
+  └─ pldmgr.elf         ← embedded Payload Manager X (always launched)
 ```
 
 > The embedded ELF is staged under the filename `pldmgr.elf` on purpose: the
