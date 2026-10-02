@@ -4,9 +4,10 @@
  * ps5-autoloader — version & config
  * ----------------------------------------------------------------------- */
 
-/* Fork of itsPLK/ps5-unified-autoloader. The "x" suffix marks the variant that
- * embeds Payload Manager X (bsk193/ps5-payload-manager-x) and always starts it. */
-#define AUTOLOADER_VERSION "0.1.5x"
+/* Fork of itsPLK/ps5-unified-autoloader: <PLK version>.<fork build>x. The "x"
+ * marks the variant that embeds Payload Manager X (bsk193/ps5-payload-manager-x)
+ * and always starts it. Based on PLK 0.1.5, fork build 1. */
+#define AUTOLOADER_VERSION "0.1.5.1x"
 
 /* Pause after an autoload.txt sequence, before handing elfldr the embedded
  * Payload Manager X, so the last autoload payload has settled first. */

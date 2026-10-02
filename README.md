@@ -106,7 +106,7 @@ PLDMGRX_PORT=8184 ./build_release.sh -b
 
 ### Output
 ```
-autoloader_v0.1.4x_abc1234.elf
+autoloader_v0.1.5.1x_abc1234.elf
 ```
 
 ## Structure
