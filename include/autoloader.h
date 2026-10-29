@@ -4,7 +4,7 @@
  * ps5-autoloader — version & config
  * ----------------------------------------------------------------------- */
 
-#define AUTOLOADER_VERSION "0.1.6"
+#define AUTOLOADER_VERSION "0.1.7"
 
 /* Port that elfldr (socksrv) listens on for incoming ELF payloads */
 #define ELFLDR_PORT 9021
@@ -45,6 +45,8 @@ static const char * const AUTOKILL_EBOOT_TITLE_IDS[] = {
     "CUSA13586", /* Nora Princess and Crying Cat 2 */
     "CUSA13303", /* Nora Princess and Stray Cat Heart HD */
     "CUSA16074", /* Raspberry Cube */
+    "CUSA19555", /* Tonari ni Kanojo no Iru Shiawase Curious Queen */
+    "CUSA09825", /* Tonari ni Kanojo no Iru Shiawase Two Farce */
     "CUSA11977", /* Tonari ni Kanojo no Iru Shiawase Winter Guest */
 
     /* Yarpe games title IDs */
