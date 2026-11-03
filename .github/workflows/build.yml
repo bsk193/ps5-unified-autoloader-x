@@ -1,0 +1,78 @@
+name: Build
+
+# ps5-unified-autoloader-x ELF on every branch push and pull request.
+# release.yml calls this workflow with the exact release version; tags are
+# handled there, not here.
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['**']
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version compiled in (e.g. 1.1.0 or 1.1.1-beta.1). Empty = dev build.'
+        type: string
+        required: false
+        default: ''
+    outputs:
+      artifact:
+        value: ${{ jobs.build.outputs.artifact }}
+      pldmgrx:
+        value: ${{ jobs.build.outputs.pldmgrx }}
+
+concurrency:
+  group: build-${{ github.ref }}-${{ inputs.version || 'dev' }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_call' && !inputs.version }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.v.outputs.artifact }}
+      pldmgrx: ${{ steps.pm.outputs.pldmgrx }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags for `git describe` (dev version)
+
+      - id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VER="$INPUT_VERSION"; SUFFIX=""
+          else
+            VER="$(bash tools/fork_version.sh dev)"; SUFFIX="-$(git rev-parse --short HEAD)"
+          fi
+          echo "X_VERSION=$VER" >> "$GITHUB_ENV"
+          echo "ARTIFACT_SUFFIX=$SUFFIX" >> "$GITHUB_ENV"
+          echo "artifact=ps5-unified-autoloader-x_v${VER}${SUFFIX}_ps5" >> "$GITHUB_OUTPUT"
+          echo "Building ps5-unified-autoloader-x $VER, based on ps5-unified-autoloader v$(bash tools/fork_version.sh upstream)"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build (downloads the latest Payload Manager X release)
+        run: bash ./build_release.sh
+
+      - name: Fix permissions for build artifacts
+        run: sudo chown -R "$USER:$USER" .
+
+      - id: pm
+        name: Verify version banner and embedded manager
+        run: |
+          set -euo pipefail
+          ELF=$(ls ps5-unified-autoloader-x_v*_ps5.elf)
+          echo "ELF: $ELF"
+          EXPECT="[autoloader] ps5-unified-autoloader-x v${X_VERSION}, based on ps5-unified-autoloader v$(bash tools/fork_version.sh upstream)"
+          strings "$ELF" | grep -F "$EXPECT"
+          # The embedded manager must be Payload Manager X, not the official pldmgr.
+          strings "$ELF" | grep -m1 "PLDMGRX_VER:" | tee /tmp/pm.txt
+          echo "pldmgrx=$(sed 's/.*PLDMGRX_VER://' /tmp/pm.txt)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.v.outputs.artifact }}
+          path: ps5-unified-autoloader-x_v*_ps5.elf
+          retention-days: 30

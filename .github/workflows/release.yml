@@ -1,51 +1,132 @@
-name: release
+name: Release
 
+# Releases are cut from tags (tools/release.ps1 creates and pushes them):
+#   git tag x-v1.1.0         && git push fork x-v1.1.0         -> release (marked Latest)
+#   git tag x-v1.1.1-beta.1  && git push fork x-v1.1.1-beta.1  -> pre-release (alpha/beta/rc)
+# Or: Actions -> Release -> Run workflow (on main), enter the version; the tag
+# is created on main's latest commit.
+# Releases are refused unless the commit is part of main.
+# The version is our own semver; the notes say which upstream release it is based
+# on (AUTOLOADER_VERSION in include/autoloader.h at that commit).
+#
+# Downstream (ps5-webkit-autoloader-x, ps5-y2jb-autoloader-x) pin this repo as a
+# submodule and download the release whose tag is on the pinned commit, so a
+# submodule must be pinned to a released x-v* tag.
 on:
+  push:
+    tags: ['x-v*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.1.0 or 1.1.1-beta.1 (creates tag x-v<version>)'
+        required: true
 
 permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      upstream: ${{ steps.v.outputs.upstream }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          # Releases only from main: the tagged commit must be part of main.
+          git fetch -q origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Commit $GITHUB_SHA is not on main. Merge to main first, then tag a commit on main."
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG="x-v${INPUT_VERSION#v}"
+            if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+              echo "::error::Tag $TAG already exists"; exit 1
+            fi
+          fi
+          if ! OUT=$(bash tools/fork_version.sh parse "$TAG"); then
+            echo "::error::Invalid release tag '$TAG'. Use x-v1.2.3 (release) or x-v1.2.3-beta.1 (pre-release: alpha/beta/rc)"
+            exit 1
+          fi
+          VER="${OUT% *}"
+          KIND="${OUT#* }"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists"; exit 1
+          fi
+          UP=$(bash tools/fork_version.sh upstream)
+          echo "Releasing ps5-unified-autoloader-x $VER ($KIND), based on ps5-unified-autoloader $UP"
+          {
+            echo "version=$VER"
+            echo "tag=$TAG"
+            echo "prerelease=$([ "$KIND" = prerelease ] && echo true || echo false)"
+            echo "upstream=$UP"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
   release:
     runs-on: ubuntu-latest
-
+    needs: [version, build]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(grep '#define AUTOLOADER_VERSION' include/autoloader.h | awk '{print $3}' | tr -d '"' | tr -d '\r')
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Get short commit SHA
-        id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build via Docker
-        run: bash ./build_release.sh
-
-      - name: Fix permissions for build artifacts
-        run: sudo chown -R $USER:$USER .
-
-      - name: Rename binary with version and short SHA
-        run: |
-          VERSION="${{ steps.get_version.outputs.version }}"
-          SHA="${{ steps.vars.outputs.sha_short }}"
-          mv autoloader_v*.elf ps5-unified-autoloader-x-v${VERSION}-${SHA}.elf
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/checkout@v4
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}-${{ steps.vars.outputs.sha_short }}
-          name: Release v${{ steps.get_version.outputs.version }}-${{ steps.vars.outputs.sha_short }}
-          files: ps5-unified-autoloader-x-v${{ steps.get_version.outputs.version }}-${{ steps.vars.outputs.sha_short }}.elf
-          draft: false
-          prerelease: false
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: dist
+      - name: Create release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VER: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+          UP: ${{ needs.version.outputs.upstream }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+          PLDMGRX: ${{ needs.build.outputs.pldmgrx }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ELF="ps5-unified-autoloader-x_v${VER}_ps5.elf"
+          [ -f "dist/$ELF" ] || { echo "::error::missing artifact $ELF"; ls -l dist; exit 1; }
+          PREV=$(git -c versionsort.suffix=- tag -l 'x-v*' --sort=-v:refname | grep -vx "$TAG" | head -1 || true)
+          {
+            echo "**ps5-unified-autoloader-x $VER**, based on [ps5-unified-autoloader v$UP](https://github.com/itsPLK/ps5-unified-autoloader/releases) by PLK."
+            echo
+            echo "Embeds [Payload Manager X](https://github.com/bsk193/ps5-payload-manager-x) ${PLDMGRX} (port 8084) and always starts it, after any \`autoload.txt\` payloads."
+            echo
+            if [ "$PRERELEASE" = "true" ]; then
+              echo "> [!WARNING]"
+              echo "> Pre-release for testing. The latest stable release is unchanged."
+              echo
+            fi
+            echo "Used by [ps5-webkit-autoloader-x](https://github.com/bsk193/ps5-webkit-autoloader-x) and [ps5-y2jb-autoloader-x](https://github.com/bsk193/ps5-y2jb-autoloader-x)."
+            if [ -n "$PREV" ]; then
+              echo
+              echo "Changes: https://github.com/${REPO}/compare/$PREV...$TAG"
+            fi
+          } > notes.md
+          if [ "$PRERELEASE" = "true" ]; then
+            FLAGS="--prerelease --latest=false"
+          else
+            FLAGS="--latest"
+          fi
+          gh release create "$TAG" "dist/$ELF" \
+            --target "$GITHUB_SHA" \
+            --title "ps5-unified-autoloader-x $VER" \
+            --notes-file notes.md \
+            $FLAGS

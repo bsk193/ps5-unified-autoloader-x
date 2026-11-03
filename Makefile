@@ -22,6 +22,16 @@ SRCS     := src/main.c src/launcher.c src/app_killer.c src/notification.c src/sy
 CFLAGS   := -Os -Wall -ffunction-sections -fdata-sections
 LDFLAGS  := -Wl,--gc-sections
 
+# Fork version (x-v* tags, see tools/fork_version.sh). CI passes X_VERSION
+# explicitly; local builds fall back to `git describe` (0.0.0-dev without tags).
+# (Not `?=`: build_release.sh passes X_VERSION into Docker even when empty.)
+ifeq ($(strip $(X_VERSION)),)
+X_VERSION := $(shell bash tools/fork_version.sh dev 2>/dev/null)
+endif
+ifneq ($(X_VERSION),)
+CFLAGS += -DAUTOLOADER_X_VERSION=\"$(X_VERSION)\"
+endif
+
 ELF          := autoloader.elf
 PLDMGR_ELF   := pldmgr.elf
 PLDMGR_ELF_C := pldmgr_elf.c

@@ -4,12 +4,12 @@
  * ps5-autoloader — version & config
  * ----------------------------------------------------------------------- */
 
-/* Fork of itsPLK/ps5-unified-autoloader: <PLK version>.<fork build>x. The "x"
- * marks the variant that embeds Payload Manager X (bsk193/ps5-payload-manager-x)
- * and always starts it. Based on PLK 0.1.7, fork build 1. */
-#define AUTOLOADER_VERSION "0.1.7.1x"
+#define AUTOLOADER_VERSION "0.1.7"
 
-/* Pause after an autoload.txt sequence, before handing elfldr the embedded
+/* Fork: our own version is AUTOLOADER_X_VERSION (include/version_x.h, from x-v*
+ * git tags); AUTOLOADER_VERSION above stays upstream's and is never edited.
+ *
+ * Pause after an autoload.txt sequence, before handing elfldr the embedded
  * Payload Manager X, so the last autoload payload has settled first. */
 #define PLDMGRX_LAUNCH_DELAY_US 2000000   /* 2 s */
 

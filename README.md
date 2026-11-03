@@ -17,7 +17,24 @@ A standalone PS5 ELF payload that automates loading payloads. This is intended f
 > Everything else — browser handling, app killing, `autoload.txt` parsing, `@sync` — is
 > upstream behaviour.
 >
-> Paired with **[ps5-webkit-autoloader-x](https://github.com/bsk193/ps5-webkit-autoloader-x)**.
+> Bundled by **[ps5-webkit-autoloader-x](https://github.com/bsk193/ps5-webkit-autoloader-x)** and
+> **[ps5-y2jb-autoloader-x](https://github.com/bsk193/ps5-y2jb-autoloader-x)**.
+
+## Versioning (fork)
+
+Own semver from git tags with the prefix **`x-v`**, the same as every bsk193 `-x` fork:
+`x-v1.2.3` is a release (Latest), `x-v1.2.3-alpha.N` / `-beta.N` / `-rc.N` a pre-release.
+
+- `AUTOLOADER_VERSION` in `include/autoloader.h` is **upstream's** and is never edited; it is
+  shown as "based on vX". Our version is `AUTOLOADER_X_VERSION` (`include/version_x.h`),
+  compiled in from the tag; dev builds use `git describe` (`0.0.0-dev` without tags).
+- `build.yml` builds every push; `release.yml` runs on `x-v*` tags and refuses commits that
+  are not on `main`. Tag with `tools/release.ps1 -Bump patch|minor|major [-Pre beta]`.
+- Artifact: `ps5-unified-autoloader-x_v<version>[-<sha>]_ps5.elf`. The build downloads the
+  latest Payload Manager X release (`pldmgrx_v*.elf`) and embeds it.
+- Downstream pins this repo as a submodule and downloads the release whose tag is on the
+  pinned commit, so pin submodules to a released `x-v*` tag. Releases before `x-v1.0.0` used
+  `v<PLK version>.<build>x-<sha>` tags (e.g. `v0.1.7.1x-5eff1e6`).
 
 ## What it does
 
@@ -106,7 +123,7 @@ PLDMGRX_PORT=8184 ./build_release.sh -b
 
 ### Output
 ```
-autoloader_v0.1.7.1x_abc1234.elf
+ps5-unified-autoloader-x_v1.0.0_ps5.elf
 ```
 
 ## Structure

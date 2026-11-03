@@ -16,6 +16,7 @@
  */
 
 #include "autoloader.h"
+#include "version_x.h"
 #include "app_killer.h"
 #include "launcher.h"
 #include "notification.h"
@@ -212,6 +213,9 @@ static void run_autoload_sequence(const char *config_path) {
  * ----------------------------------------------------------------------- */
 int main(void) {
     printf("[autoloader] ps5-autoloader v" AUTOLOADER_VERSION " (" __DATE__ " " __TIME__ ") starting\n");
+    /* Fork banner: our version and the upstream base (CI greps this string). */
+    printf("[autoloader] ps5-unified-autoloader-x v" AUTOLOADER_X_VERSION
+           ", based on ps5-unified-autoloader v" AUTOLOADER_X_VERSION_UPSTREAM "\n");
     fflush(stdout);
 
     /* Step 1: handle WebKit browser if running (navigate to Home) */

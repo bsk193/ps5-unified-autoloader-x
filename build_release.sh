@@ -13,6 +13,12 @@
 #   ./build_release.sh -b           # build pldmgrx from source (uses its own Docker)
 #   ./build_release.sh --build-deps
 #
+# Version: X_VERSION from the environment (CI passes the release version or
+# `tools/fork_version.sh dev`), else `tools/fork_version.sh dev` (git describe on
+# x-v* tags, 0.0.0-dev without tags). ARTIFACT_SUFFIX (e.g. "-abc1234" for dev
+# builds) is appended to the file name only:
+#   ps5-unified-autoloader-x_v<version>[-<sha>]_ps5.elf
+#
 # PLDMGRX_PORT selects the Payload Manager X HTTP port for -b builds:
 #   8084 (default) -> drop-in replacement for the official manager
 #   8184           -> runs alongside the official manager
@@ -36,29 +42,17 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # -----------------------------------------------------------------------
-# Extract version from include/autoloader.h
+# Version: our own (x-v* tags); upstream's AUTOLOADER_VERSION is only shown
 # -----------------------------------------------------------------------
-VERSION=$(grep '#define AUTOLOADER_VERSION' include/autoloader.h \
-    | awk '{print $3}' | tr -d '"' | tr -d '\r')
+X_VERSION="${X_VERSION:-$(bash tools/fork_version.sh dev)}"
+export X_VERSION
+UPSTREAM_VERSION=$(bash tools/fork_version.sh upstream)
+SUFFIX="${ARTIFACT_SUFFIX:-}"
 
-if [ -z "$VERSION" ]; then
-    echo "Error: Could not find AUTOLOADER_VERSION in include/autoloader.h"
-    exit 1
-fi
-
-# -----------------------------------------------------------------------
-# Compute short commit hash (or DEV_<timestamp> if working tree is dirty)
-# -----------------------------------------------------------------------
-if git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null; then
-    SHORT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-else
-    SHORT_HASH="DEV_$(date -u +"%Y%m%d_%H%M%S")"
-fi
-
-OUTPUT_ELF="autoloader_v${VERSION}_${SHORT_HASH}.elf"
+OUTPUT_ELF="ps5-unified-autoloader-x_v${X_VERSION}${SUFFIX}_ps5.elf"
 IMAGE_NAME="ps5-unified-autoloader-x-sdk"
 
-echo "=== ps5-unified-autoloader-x v${VERSION} (${SHORT_HASH}) ==="
+echo "=== ps5-unified-autoloader-x v${X_VERSION}, based on ps5-unified-autoloader v${UPSTREAM_VERSION} ==="
 
 # -----------------------------------------------------------------------
 # Step 1: Obtain pldmgr.elf
@@ -140,7 +134,7 @@ fi
 # Step 3: Build autoloader.elf inside Docker
 # -----------------------------------------------------------------------
 echo "[3/3] Building autoloader.elf via Docker..."
-docker run --rm -v "$(pwd)":/src -w /src "$IMAGE_NAME" make clean all
+docker run --rm -e "X_VERSION=${X_VERSION}" -v "$(pwd)":/src -w /src "$IMAGE_NAME" make clean all
 
 # -----------------------------------------------------------------------
 # Rename to versioned output
