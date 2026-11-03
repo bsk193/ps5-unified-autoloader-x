@@ -67,9 +67,16 @@ jobs:
           echo "ELF: $ELF"
           EXPECT="[autoloader] ps5-unified-autoloader-x v${X_VERSION}, based on ps5-unified-autoloader v$(bash tools/fork_version.sh upstream)"
           strings "$ELF" | grep -F "$EXPECT"
-          # The embedded manager must be Payload Manager X, not the official pldmgr.
-          strings "$ELF" | grep -m1 "PLDMGRX_VER:" | tee /tmp/pm.txt
-          echo "pldmgrx=$(sed 's/.*PLDMGRX_VER://' /tmp/pm.txt)" >> "$GITHUB_OUTPUT"
+          # The embedded manager must be Payload Manager X, not the official pldmgr:
+          # only the X build logs "Starting Payload Manager X".
+          strings "$ELF" | grep -m1 -F "Starting Payload Manager X v"
+          # Its version: the PLDMGRX_VER: marker when present (x-v1.0.0), else the
+          # "<ver> (based on v<upstream>)" display string (x-v1.1.0 lost the marker).
+          PM=$(strings "$ELF" | grep -m1 -oE 'PLDMGRX_VER:[^[:space:]]+' | sed 's/^PLDMGRX_VER://' || true)
+          [ -n "$PM" ] || PM=$(strings "$ELF" | grep -m1 -oE '^[0-9]+\.[0-9]+\.[0-9]+[^ ]* \(based on v[0-9.]+\)$' | cut -d' ' -f1 || true)
+          [ -n "$PM" ] || { echo "::error::could not read the embedded Payload Manager X version"; exit 1; }
+          echo "Embedded Payload Manager X: $PM"
+          echo "pldmgrx=$PM" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
