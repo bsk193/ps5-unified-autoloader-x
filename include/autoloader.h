@@ -6,8 +6,8 @@
 
 /* Fork of itsPLK/ps5-unified-autoloader: <PLK version>.<fork build>x. The "x"
  * marks the variant that embeds Payload Manager X (bsk193/ps5-payload-manager-x)
- * and always starts it. Based on PLK 0.1.5, fork build 1. */
-#define AUTOLOADER_VERSION "0.1.5.1x"
+ * and always starts it. Based on PLK 0.1.7, fork build 1. */
+#define AUTOLOADER_VERSION "0.1.7.1x"
 
 /* Pause after an autoload.txt sequence, before handing elfldr the embedded
  * Payload Manager X, so the last autoload payload has settled first. */
@@ -52,6 +52,8 @@ static const char * const AUTOKILL_EBOOT_TITLE_IDS[] = {
     "CUSA13586", /* Nora Princess and Crying Cat 2 */
     "CUSA13303", /* Nora Princess and Stray Cat Heart HD */
     "CUSA16074", /* Raspberry Cube */
+    "CUSA19555", /* Tonari ni Kanojo no Iru Shiawase Curious Queen */
+    "CUSA09825", /* Tonari ni Kanojo no Iru Shiawase Two Farce */
     "CUSA11977", /* Tonari ni Kanojo no Iru Shiawase Winter Guest */
 
     /* Yarpe games title IDs */
